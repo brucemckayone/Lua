@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks":[
+        {
+            "label": "hello",
+            "type": "shell",
+            "command": "lua",
+            "args": [],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    
+}
