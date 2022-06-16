@@ -66,7 +66,7 @@ local function print_r(arr, indentLevel)
         end
     end
     return str
-end     
+end 
 
 local function linSpace(length)
     local r = {}
@@ -87,9 +87,6 @@ local function updateDerivitiveHistory(derHistory,newHistoryArray)
     end
     return derHistory
 end
-
-local choiceHistory = {}
-local possibleChoices= {'hardLeft', 'left', 'right', 'hardRight'};
 
 local function chooseDirection(derHistory)
     local length = #derHistory
@@ -126,7 +123,7 @@ local function determinePath(derHistory,count)
         end
     end
 end
-table.
+
 local count = 0
 for i=1,200 do
     count=count+1;
@@ -136,12 +133,7 @@ for i=1,200 do
     currentDerivitive = getDerivitiveOfArray(history)
     derivitveHistory = updateDerivitiveHistory(derivitveHistory,currentDerivitive);
     determinePath(derivitveHistory,count)
-   
-   
 end
-
--- print_r(derivitveHistory)
-
 
 
 
