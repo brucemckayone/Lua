@@ -5,7 +5,7 @@
         
 -- Add your own program in function user_prgm() , after the comment "user program code goes below"
 
-    function sysCall_init() 
+function sysCall_init() 
         -- Check if we have a controller in the scene:
         i=0
         while true do
@@ -117,7 +117,14 @@ local dbug = {
             end
         end
         return str
-    end
+    end,
+    printRawMessage= function(self)
+        if(Com:isMessageInBuffer())then
+            print("message_rx 1 =  ".. message_rx[1])
+            print("message_rx 2 =  ".. message_rx[2])
+            print("message_rx 3 =  ".. message_rx[3])
+        end
+    end,
 
 }
 
@@ -133,6 +140,24 @@ local arrayUtils = {
     end,
     average = function(self,array) 
         return self.sum(array)/#array
+    end,
+    averageBool =function(self,array)
+        local falses = 0
+        local trues = 0
+        print(#array)
+        for i=0,#array do
+            if(array[i]==1)then
+               falses= falses+ 1
+            else
+               trues = trues + 1
+            end
+        end
+        if(falses> trues)then
+            return false
+        else
+            return true
+        end
+        
     end,
 
     diff = function(array)
@@ -160,12 +185,18 @@ local arrayUtils = {
 
 }
 
-local utils = {
+local Utils = {
     restrictNumberLimits =function(self,intensity,limit)
         if(intensity> limit)then intensity = limit end
         if(intensity< -limit)then intensity = -limit end
         return intensity
-    end
+    end,
+    getKeyFromValue= function (t, val)
+        for k,v in pairs(t) do
+            if(v == val)then 
+            return k end
+        end
+    end,
 }
               
     local function setDelayStartAndDoFunction(func)
@@ -181,90 +212,78 @@ local utils = {
     end
 
         
-        local Locomotion = {
-        motorMaxIntensity =255,
-        motorIntensity = 150,
-        motorRatio =0.5,
-
-        
-
+local Locomotion = {
+        --------------------------------SET MOTOR RATIO -------------------------------
         -- set motor ratio used for turning--0.5 is straight lower is left higher is right
-        setMotorRatio = function(self,ratio)
-            self.motorRatio = ratio
-            local leftMotorRatio = 1-self.motorRatio;
-            set_motor(150*leftMotorRatio,150*self.motorRatio)
-        end,
-        -- sets intensity of motor
-        setMotorIntensity =  function(self,intensity)
-            if(intensity> self.motorMaxIntensity) then intensity= self.motorMaxIntensity end
-            self.motorIntensity = intensty
-
-        end,
+        --variables------------------------------------------------------------------------
+            motorRatio =0.5,
+            normalMotorIntensity = 150,
+        -----------------------------------------------------------------------------------
+            setMotorRatio = function(self,ratio)
+                self.motorRatio = ratio
+                local leftMotorRatio = 1-self.motorRatio;
+                set_motor(self.normalMotorIntensity*leftMotorRatio,self.normalMotorIntensity*self.motorRatio)
+            end,
+            
+        -----------------------------------------STOP MOTOR --------------------------------
+            stopMotor = function()set_motor(0,0)end,
         
-        stopMotor = function()set_motor(0,0)end,
-
-        zigZagMotorSubstrate = 0,
-        doNoisyZigZagWalk = function(self)
-            if(self.zigZagMotorSubstrate == 0 )then
-                self.zigZagMotorSubstrate=1,
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.5)end) --go forward reset clock
-            elseif (self.zigZagMotorSubstrate== 1) then
+        
+    
+        
+        --------------------------------DO RANDOM ZIGZAG WALK---------------------------------------------------
+        ---variables ---------------------------------------------------------------------------------------------------
+            zigZagMotorSubstrate = 0,
+        ---------------------------------------------------------------------------------------------------------------
+            doNoisyZigZagWalk = function(self)
+                if(self.zigZagMotorSubstrate == 0 )then
+                    self.zigZagMotorSubstrate=1,
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.5)end) --go forward reset clock
+                elseif (self.zigZagMotorSubstrate== 1) then
+                    randomDelay =math.random(1000,10000)
+                    self.zigZagMotorSubstrate=asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,2)
+                elseif (self.zigZagMotorSubstrate== 2) then
+                    self.zigZagMotorSubstrate = 3;
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.9)end) -- go hard right restart clock
+                elseif (self.zigZagMotorSubstrate==3) then
                 randomDelay =math.random(1000,10000)
-                self.zigZagMotorSubstrate=asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,2)
-            elseif (self.zigZagMotorSubstrate== 2) then
-                self.zigZagMotorSubstrate = 3;
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.9)end) -- go hard right restart clock
-            elseif (self.zigZagMotorSubstrate==3) then
-            randomDelay =math.random(1000,10000)
-                self.zigZagMotorSubstrate=    asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,4)
-            elseif (self.zigZagMotorSubstrate==4) then
-                self.zigZagMotorSubstrate= 5;
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.1)end) --go left restart clock
-            elseif(self.zigZagMotorSubstrate== 5)then
-            randomDelay =math.random(1000,10000)
-               self.zigZagMotorSubstrate= asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,0)
-            end
-        end,
+                    self.zigZagMotorSubstrate=    asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,4)
+                elseif (self.zigZagMotorSubstrate==4) then
+                    self.zigZagMotorSubstrate= 5;
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.1)end) --go left restart clock
+                elseif(self.zigZagMotorSubstrate== 5)then
+                randomDelay =math.random(1000,10000)
+                   self.zigZagMotorSubstrate= asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,0)
+                end
+            end,
+            
         
+        -----------------------SPIRAL SEARCHING-------------------------------------------------
+        ---variables --------------------------------------------------------------------------
+            spiralSubstrate = 0,
+        ---------------------------------------------------------------------------------------
+            doSpiralSearch = function(self)
+                self.spiralSubstrate = self.spiralSubstrate + 1
+                local spiralExpansionCount = 7000
+                self:setMotorRatio(self.spiralSubstrate/spiralExpansionCount)
+                if(self.spiralSubstrate == spiralExpansionCount)then self.spiralSubstrate = 0 end
+            end,
+            
+            ---reset spiral
+            resetSpiral = function(self)self.spiralSubstrate = 0 end,
+       
+        --------------------REDUCE DISTANCE BETWEEN SELF AND TARGET ----------------------
+        ---variables--------------------------------------------------------------------------------- 
+            sampleLength = 200,
+            derHistory= {0,0,0,0},
+            distanceHistory={0,0,0,0},
+            sampleCount = 0,
+            currentTurningDirection = false,
+        ---------------------------------------------------------------------------------------------
         
-        --spriral search
-        spiralSubstrate = 0,
-        doSpiralSearch = function(self)
-            self.spiralSubstrate = self.spiralSubstrate + 1
-            local spiralExpansionCount = 7000
-            self:setMotorRatio(self.spiralSubstrate/spiralExpansionCount)
-            if(self.spiralSubstrate == spiralExpansionCount)then self.spiralSubstrate = 0 end
-        end,
-        
-        
-        ----------------
-        leftMotorIntensity = 60,
-        rightMotorIntensity = 60,
-        setDirection = function(self,direction, intensity)
-            local intensity = math.abs(intensity)
-            print(intensity)
-            if( direction) then
-                self.leftMotorIntensity = utils:restrictNumberLimits( intensity, 255)
-                self.rightMotorIntensity= utils:restrictNumberLimits( intensity/2, 255)
-            elseif (not direction) then
-                self.rightMotorIntensity= utils:restrictNumberLimits(  intensity* self.rightMotorIntensity,255)
-                self.leftMotorIntensity = utils:restrictNumberLimits( intensity/2,255)
-            end
-            set_motor(self.leftMotorIntensity,self.rightMotorIntensity)
-        end,
-        -------------------------------------------------
-        sampleLength = 200,
-        derHistory= {0,0,0,0},
-        distanceHistory={0,0,0,0},
-        sampleCount = 0,
-        currentTurningDirection = false,
-        
-        --------------------REDUCE DISTANCE BETWEEN SELF AND TARGET -------------------------
-        minDistance  = function (self,distance)
+            minDistance  = function (self,distance)
                 self.sampleCount = self.sampleCount +1
                 self.distanceHistory = arrayUtils.roll(self.distanceHistory,distance, self.sampleLength)
-                
-                --dbug:print_r(self.distanceHistory)
                 local derHistorySample = arrayUtils.diff(self.distanceHistory)
             
                 self.derHistory = arrayUtils.roll(self.derHistory, derHistorySample, self.sampleLength)
@@ -298,9 +317,7 @@ local utils = {
                     local topSum = arrayUtils.sum(top ) 
                     local bottomSum=arrayUtils.sum(bottom)
                     self.rateOfRelativePostionChange = topSum /(bottomSum*10000) --slope
-                    --print(self.rateOfRelativePostionChange)
-                    --print(self.rateOfRelativePositionChange)
-                    self.rateOfRelativePostionChange = utils:restrictNumberLimits(self.rateOfRelativePostionChange,500)
+                    self.rateOfRelativePostionChange = Utils:restrictNumberLimits(self.rateOfRelativePostionChange,500)
                     
                     if( self.rateOfRelativePostionChange < 0 ) then
                         self:setDirection(  not self.currentTurningDirection,self.rateOfRelativePostionChange)
@@ -308,59 +325,251 @@ local utils = {
                         self:setDirection( self.currentTurningDirection,self.rateOfRelativePostionChange)
                     end
                 end
+            end,
+        ------------------------------  SET DIRECTION ---------------------------
+        --variables ---------------------------------------------------------------
+        leftMotorIntensity = 60,
+        rightMotorIntensity = 60,
+        motorMaxIntensity =255,
+        ---------------------------------------------------------------------------
+        setDirection = function(self,direction, intensity)
+            local intensity = math.abs(intensity)
+            --print(intensity)
+            if( direction) then
+                self.leftMotorIntensity = Utils:restrictNumberLimits( intensity, self.motorMaxIntensity)
+                self.rightMotorIntensity= Utils:restrictNumberLimits( intensity/2, 255)
+            elseif (not direction) then
+                self.rightMotorIntensity= Utils:restrictNumberLimits(  intensity* self.rightMotorIntensity,self.motorMaxIntensity)
+                self.leftMotorIntensity = Utils:restrictNumberLimits( intensity/2,255)
+            end
+            set_motor(self.leftMotorIntensity,self.rightMotorIntensity)
         end,
+    }
+    
+    Kilobot= {
+            currentRoll= 5,
+            Rolls= {
+                FOLLOWER    = 0,
+                LEADER      = 1,
+                BEACON      = 2,
+                FOODSOURCE  = 3,
+                UNRECRUTED  = 4,
+                SCOUT       = 5,
+                },
+            setCurrentRoll = function(self, roll) 
+                self.currentRoll = self.Rolls[roll]
+            end
+        }
         
-        --------------------ACT AS FOLLOWER -------------------------
-        actAsFollower = function(self,distance)
-            local isSearching = false
-            if (distance ~= nil)  then 
-                distance= distance + half_diam
+        Light = {
+            Colors = {
+                RED        = 0,
+                GREEN      = 1,
+                BLUE       = 2,
+                ORANGE     = 3,
+                PURPLE     = 4,
+                YELLOW     = 5,
+                WHITE      = 6,
+                VIOLET     = 7,
+                TURQUOISE  = 8,
+            },
+            setColor = function(self,color)
+            
+                if(color ==0)then
+                    set_color(3,0,0) -- RED
+                elseif(color== 1)then
+                    set_color(0,3,0) -- GREEN
+                elseif(color== 2)then
+                    set_color(0,0,3) -- BLUE
+                elseif(color== 3)then
+                    set_color(3,3,0) -- ORANGE
+                elseif(color== 4)then
+                    set_color(0,3,3) -- PURPLE
+                elseif(color== 5)then
+                    set_color(3,1,0) -- YELLOW
+                elseif(color== 6)then
+                    set_color(3,3,3) -- WHITE
+                elseif(color== 7)then
+                    set_color(3,0,3) -- VIOLET
+                elseif(color== 8)then
+                    set_color(0,3,1) -- TURQUOISE
+                end
+            end,
+            
+            gradientDistance = function(self,distance) 
+                if (distance ~= nil)  then 
+                    distance= distance + half_diam
                     if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
-                        local initSubstrate =0
-                        if(initSubstrate == 0 )then
-                            initSubstrate = 1
-                            self:minDistance(distance)
-                        end
-                        
-                        if (distance< 0.035) then self.isSearching= false; set_motor(0,0);print('is stopping') end
-                        if (distance> 0.08) then self.isSearching= true end
-                        
-                        if(self.isSearching)then 
-                            self:minDistance(distance)
-                            set_color(0,5,0)
+                        if(distance < 0.033) then
+                            self:setColor(self.Colors.WHITE) --turn RGB LED White
+                        elseif(distance < 0.040) then
+                            self:setColor(self.Colors.RED)
+                        elseif(distance < 0.050) then
+                            self:setColor(self.Colors.ORANGE)
+                        elseif(distance < 0.060) then
+                            self:setColor(self.Colors.GREEN)
+                        elseif(distance < 0.070) then            
+                            self:setColor(self.Colors.TURQUOISE)
+                        elseif(distance < 0.080) then
+                            self:setColor(self.Colors.BLUE)
+                        elseif(distance < 0.090) then
+                            self:setColor(self.Colors.VIOLET)                
                         else
-                            set_motor(0,0)
-                            set_color(0,0,5)
-                        end
+                            set_color(0,0,0)     
+                        end     
                     end
                 else
-                    self.spiralSubstrate=0
-                    set_motor(0,0)
-                    set_color(5,0,0)
-                    self:doSpiralSearch()
-                end
-        end,
-        actAsLeader= function(self,distance)
-            local isSearching = 0
-            if (distance ~= nil)  then 
-                distance= distance + half_diam
-                --print(distance)
-                if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
-                    isSearching =true
-                    if (distance> 0.08 ) then isSearching= false end
-                    if (distance< 0.01) then isSearching= true end
-                    if(isSearching)then
-                        self:doNoisyZigZagWalk() 
-                    else
-                        set_motor(0,0)
-                        set_color(0,0,5)
-                    end
-                    --if(distance > 0.09)then set_motor(0,0) end
-                    --if(distance< 0.025) then  end
+                    set_color(0,0,0)
                 end
             end
-        end
-    }
+        }
+        
+        Com = {-- messages are sent every duty cycle 
+            getMessage = function(self) 
+                get_message()
+            end ,
+            setMessage = function(self,bit1,bit2,bit3) message_out(bit1,bit2,bit3)end,
+            resetMessage =function(self)
+                message_rx[1] = 0
+                message_rx[2] = 0
+                message_rx[3] = 0
+            end,
+            
+            -- this function will reset messages if buffer has been ampty of new messages after 100 ticks 
+            tickCount =0,
+            sanitizeBuffer = function(self)
+                if(self:isMessageInBuffer())then
+                    --print(message_rx[1])
+                    self.tickCount= 0
+                else
+                    self.tickCount =self.tickCount+1
+                    if(self.tickCount == 100) then 
+                        print("buffer sanitized")
+                        self.tickCount = 0
+                         message_rx[1] = 0
+                         message_rx[2] = 0
+                         message_rx[3] = 0
+                    end
+                    
+                end
+            end,
+            
+            isMessageInBuffer = function(self,action) 
+                self:getMessage()
+                if(message_rx[6]==1)then
+                    if(action~= nill) then action()end
+                    return true
+                else
+                    return false
+                end 
+            end,
+            getMessageAsColor = function(self)
+               self:isMessageInBuffer(function()
+                print(Utils.getKeyFromValue(Light.Colors,message_rx[1]))
+               end )
+            end,
+            
+            
+            printRawMessage= function(self)
+                if(self:isMessageInBuffer())then
+                    print("message_rx 1 =  ".. message_rx[1])
+                    print("message_rx 2 =  ".. message_rx[2])
+                    print("message_rx 3 =  ".. message_rx[3])
+                end
+            end,
+            getMessageAsRoll = function(self)
+             self:isMessageInBuffer(function()
+                print(Utils.getKeyFromValue(Kilobot.Rolls,message_rx[1]))
+               end )
+            end,
+            
+            
+            falses =0,
+            trues = 0,
+            isTalkingToBeacon = function(self)
+                if(message_rx[6]==1)then
+                   if(message_rx[1]==Kilobot.Rolls.BEACON)then
+                        self.falses = self.falses +1
+                   else
+                        self.trues = self.trues +1
+                   end
+                   if(self.trues >self.falses)then return true else return false end
+                   if(self.trues> 50 or self.falses> 50) then self.trues=0;self.falses=0 end
+                end
+            end,
+            
+            
+        }
+    
+        
+        Behaviours = {
+            go = true,
+            leader= function(self)
+            result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+                if (distance ~= nil)  then 
+                    distance= distance + half_diam
+                    if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                        if(distance> 0.08) then self.go = false end
+                        if(distance< 0.040) then self.go = true end
+                        if(self.go) then
+                            Locomotion:doNoisyZigZagWalk()
+                        else 
+                            Locomotion:stopMotor()
+                        end 
+                    end
+                end
+            end,
+            
+            scout = function(self) 
+                Locomotion:doNoisyZigZagWalk()
+                Light:setColor(Light.Colors.RED)
+            end,
+            
+            follower = function(self,transmittedDistance)
+                isSearching = false
+                initSubstrate = 0
+                if(transmittedDistance==nil) then
+                    result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+                end
+                --check communications to see if we have found a beacon 
+                if (distance ~= nil)  then 
+                    distance= distance + half_diam
+                        if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                            
+                            if (distance< 0.04) then isSearching= false end
+                            if (distance> 0.08 or distance> 0.04) then
+                                isSearching= true 
+                            end
+                            
+                            if(isSearching)then 
+                    
+                                Locomotion:minDistance(distance)
+                                set_color(0,5,0)
+                            else
+                               
+                                Locomotion:stopMotor()
+                                set_color(0,0,5)
+                            end
+                        end
+                    else
+                        Light.setColor(Light.Colors.RED)
+                        Locomotion:stopMotor()
+                        Locomotion:resetSpiral()
+                        Locomotion:doSpiralSearch()
+                    end
+            end,
+            
+            beacon= function()
+                --transmit distance two someone who finds a beacon
+                --byte 1 defines roll byte 2 defines distance 
+                result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+                -- sending out distance ^6 to maintain fedelity. 
+                if(distance==nil) then distance =0 end 
+                Com:setMessage(2,distance*10^6,0)
+                Com:printRawMessage()
+            end
+            
+        }
         
     
         -------------------------------------------------------------------------------------------------------------------------------------------
@@ -368,15 +577,46 @@ local utils = {
         -------------------------------------------------------------------------------------------------------------------------------------------    
         
         function user_prgm()
-        
+            Com:sanitizeBuffer()
+            
             if (message_rx[6]==1) then
                 -- process your message
             end
     
             -- get distance to nearest obsctacle
             result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
-
-            Locomotion:actAsLeader(distance)
+            if(Kilobot.currentRoll == Kilobot.Rolls.FOLLOWER)then 
+                Behaviours:follower() -- Do follower behaviour
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.LEADER) then
+                -- Do LEADER Behaviour
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.BEACON) then
+                -- Do beacon behaviour
+                
+                Behaviours:beacon()
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.FOODSOURCE)  then
+                -- Do food source behaviour
+                    --  TRANSMIT SOMESORT OF DATA TO FINDER 
+                    --  FORCE FOLLOW
+                    
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.UNRECRUTED )  then
+                -- Do food source behaviour
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.SCOUT )  then
+                -- Do food source behaviour
+                print(message_rx[1])
+             if(message_rx[1]==2)then
+                    --print('talking')
+                    --follow beacon with transmitted distance
+                    Behaviours:follower(message_rx[2]/(10^6)) 
+                else
+                    --print('scounting')
+                    Behaviours:scout() 
+                end
+            end
+            
         
         end
         
