@@ -141,24 +141,6 @@ local arrayUtils = {
     average = function(self,array) 
         return self.sum(array)/#array
     end,
-    averageBool =function(self,array)
-        local falses = 0
-        local trues = 0
-        print(#array)
-        for i=0,#array do
-            if(array[i]==1)then
-               falses= falses+ 1
-            else
-               trues = trues + 1
-            end
-        end
-        if(falses> trues)then
-            return false
-        else
-            return true
-        end
-        
-    end,
 
     diff = function(array)
         local derivitive ={}
@@ -347,15 +329,14 @@ local Locomotion = {
     }
     
     Kilobot= {
-            currentRoll= 5,
+            currentRoll= 2,
             Rolls= {
                 FOLLOWER    = 0,
                 LEADER      = 1,
                 BEACON      = 2,
                 FOODSOURCE  = 3,
                 UNRECRUTED  = 4,
-                SCOUT       = 5,
-                },
+                FOODSOURCE = 5,  },
             setCurrentRoll = function(self, roll) 
                 self.currentRoll = self.Rolls[roll]
             end
@@ -425,42 +406,13 @@ local Locomotion = {
         }
         
         Com = {-- messages are sent every duty cycle 
-            getMessage = function(self) 
-                get_message()
-            end ,
+            getMessage = function(self) get_message()end ,
             setMessage = function(self,bit1,bit2,bit3) message_out(bit1,bit2,bit3)end,
-            resetMessage =function(self)
-                message_rx[1] = 0
-                message_rx[2] = 0
-                message_rx[3] = 0
-            end,
-            
-            -- this function will reset messages if buffer has been ampty of new messages after 100 ticks 
-            tickCount =0,
-            sanitizeBuffer = function(self)
-                if(self:isMessageInBuffer())then
-                    --print(message_rx[1])
-                    self.tickCount= 0
-                else
-                    self.tickCount =self.tickCount+1
-                    if(self.tickCount == 100) then 
-                        print("buffer sanitized")
-                        self.tickCount = 0
-                         message_rx[1] = 0
-                         message_rx[2] = 0
-                         message_rx[3] = 0
-                    end
-                    
-                end
-            end,
-            
             isMessageInBuffer = function(self,action) 
                 self:getMessage()
                 if(message_rx[6]==1)then
                     if(action~= nill) then action()end
-                    return true
-                else
-                    return false
+                    return true 
                 end 
             end,
             getMessageAsColor = function(self)
@@ -468,8 +420,6 @@ local Locomotion = {
                 print(Utils.getKeyFromValue(Light.Colors,message_rx[1]))
                end )
             end,
-            
-            
             printRawMessage= function(self)
                 if(self:isMessageInBuffer())then
                     print("message_rx 1 =  ".. message_rx[1])
@@ -482,23 +432,6 @@ local Locomotion = {
                 print(Utils.getKeyFromValue(Kilobot.Rolls,message_rx[1]))
                end )
             end,
-            
-            
-            falses =0,
-            trues = 0,
-            isTalkingToBeacon = function(self)
-                if(message_rx[6]==1)then
-                   if(message_rx[1]==Kilobot.Rolls.BEACON)then
-                        self.falses = self.falses +1
-                   else
-                        self.trues = self.trues +1
-                   end
-                   if(self.trues >self.falses)then return true else return false end
-                   if(self.trues> 50 or self.falses> 50) then self.trues=0;self.falses=0 end
-                end
-            end,
-            
-            
         }
     
         
@@ -508,10 +441,14 @@ local Locomotion = {
             result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
                 if (distance ~= nil)  then 
                     distance= distance + half_diam
+    
                     if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                    
                         if(distance> 0.08) then self.go = false end
                         if(distance< 0.040) then self.go = true end
+                        
                         if(self.go) then
+                           
                             Locomotion:doNoisyZigZagWalk()
                         else 
                             Locomotion:stopMotor()
@@ -520,10 +457,6 @@ local Locomotion = {
                 end
             end,
             
-            scout = function(self) 
-                Locomotion:doNoisyZigZagWalk()
-                Light:setColor(Light.Colors.RED)
-            end,
             
             follower = function(self,transmittedDistance)
                 isSearching = false
@@ -560,13 +493,16 @@ local Locomotion = {
             end,
             
             beacon= function()
+            
                 --transmit distance two someone who finds a beacon
                 --byte 1 defines roll byte 2 defines distance 
                 result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
                 -- sending out distance ^6 to maintain fedelity. 
                 if(distance==nil) then distance =0 end 
-                Com:setMessage(2,distance*10^6,0)
-                Com:printRawMessage()
+                distance= distance + half_diam
+                
+                Com:setMessage(Kilobot.Rolls.FOODSOURCE,distance*10^6,0)
+                -- Com:printRawMessage()
             end
             
         }
@@ -577,8 +513,7 @@ local Locomotion = {
         -------------------------------------------------------------------------------------------------------------------------------------------    
         
         function user_prgm()
-            Com:sanitizeBuffer()
-            
+        
             if (message_rx[6]==1) then
                 -- process your message
             end
@@ -590,7 +525,7 @@ local Locomotion = {
                 
             elseif (Kilobot.currentRoll == Kilobot.Rolls.LEADER) then
                 -- Do LEADER Behaviour
-                
+        
             elseif (Kilobot.currentRoll == Kilobot.Rolls.BEACON) then
                 -- Do beacon behaviour
                 
@@ -603,18 +538,7 @@ local Locomotion = {
                     
             elseif (Kilobot.currentRoll == Kilobot.Rolls.UNRECRUTED )  then
                 -- Do food source behaviour
-                
-            elseif (Kilobot.currentRoll == Kilobot.Rolls.SCOUT )  then
-                -- Do food source behaviour
-                print(message_rx[1])
-             if(message_rx[1]==2)then
-                    --print('talking')
-                    --follow beacon with transmitted distance
-                    Behaviours:follower(message_rx[2]/(10^6)) 
-                else
-                    --print('scounting')
-                    Behaviours:scout() 
-                end
+            
             end
             
         
