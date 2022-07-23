@@ -1,0 +1,163 @@
+-- Code using distance to locate stationary kilobot
+
+
+-- this symbolizes the main loop of the kilobots, there duty cycle
+-- this is where you would implement the code i put it first because its easier to understand the code
+-- the the furthest abstraction to the least abstraction
+for i=0,999999 do
+    if(Kilobot.currentRoll == Kilobot.Rolls.LEADER)then 
+        Behaviours:leader(distance)
+    elseif(Kilobot.currentRoll == Kilobot.Rolls.FOLLOWER)then
+        Behaviours:follower(distance)
+    end
+end
+
+--method one
+-- Behaviours is a table with methods and there variables related to those methods
+-- to call these methods. YOU HAVE TO USE THIS SYNTAX:
+
+--              Behaviours:leader(distance)
+-- the colon is syntatic sugar to avoid having to write 
+--              B1 = Behaviours 
+--              B1.leader(B1,distance)
+-- its just much nicer mabye not quite as efficent with memory but oh well.
+
+Behaviours ={
+            go = true,
+            -- leader function switches between stationary and random walk
+            leader= function(self,distance)
+                if (distance ~= nil)  then
+                    -- this block acts as a persistance switch that is triggered by specific distances
+                        if(distance > 0.07) then self.go = false end
+                        if(distance < 0.035) then self.go = true end
+                        if(self.go) then
+                            -- print('leading is doing search and distance = '..  distance)
+                            Locomotion:doNoisyZigZagWalk()
+                        else 
+                            -- print('leading is stopped = '..  distance)
+                            Locomotion:stopMotor()
+                        end 
+                    
+                end
+            end,
+             -- Follower function switches between stationary and minimizing distance
+                -- if distance is greater than threshold minimize distance
+                -- if distance is less than threashold stop
+            follower = function(self,distance)
+                if (distance ~= nil)  then        
+                    -- this block acts as a persistance switch that is triggered by specific distances
+                        if (distance < 0.035) then self.go = false end 
+                        if (distance > 0.07 ) then self.go = true end
+                        
+
+                        if(self.go)then 
+                            --print('Follower doing Rotation Search with distance = ' .. distance )
+                            Locomotion:rotationSearch(distance)
+                        else
+                            --print('follower stoped with  distance = ' .. distance)
+                            Locomotion:stopMotor()
+                            set_color(0,0,5)
+                        end
+                end
+            end,    
+        }
+
+-- the actions in Behaviours are abstracted to the locomotion table which needs cleaning up
+
+
+Locomotion={
+--------------------REDUCE DISTANCE BETWEEN SELF AND TARGET ---------------------------------
+   
+---variables--------------------------------------------------------------------------------- 
+    rotationSearchArray ={0},
+        directionCheck = {},
+        isGoingTowards = false,
+        isWithinBoundary = false,
+        hasRotationLockedOn=false,
+        isSearchComplete=false,
+        dataCollectionThreshold = 100,
+        rotationSearchRoll = {},
+        rotationSearchTickCount = 0,
+---------------------------------------------------------------------------------------------
+       
+         rotationSearch = function(self,distance)
+            self.rotationSearchTickCount = self.rotationSearchTickCount+1
+            if( distance ~= 0 or nil )then -- creating a distance history array used to check if moving towards or away from master point
+                self.directionCheck = ArrayUtils.roll(self.directionCheck,distance,20) -- builds an array of length 20 and pushes new values in and old one out
+                self.isGoingTowards = ArrayUtils:sum(ArrayUtils.diff(self.directionCheck)) > 0 --checks if moving towards or away from
+            end
+
+            if( (distance == 0 or nil)) then -- flag if outside distance boundary
+                    self.isWithinBoundary = true -- set flag
+                    self.dataCollectionThreshold = #self.rotationSearchArray
+                else -- collect data 
+                    self.isWithinBoundary = false -- set flag 
+                    table.insert(self.rotationSearchArray,distance) -- build data table of distances
+                end
+        
+            if(self.hasRotationLockedOn)then -- if locked on to maximum go straight
+                Light:setColor(Light.Colors.GREEN) -- green means go
+                set_motor(100,100) -- TODO: make this a zig zag forward for better coverage
+                if(#self.rotationSearchArray > 20)then -- if distance is increasing search again after 20 data point
+                    if(self.isGoingTowards~=true)then -- of moving away from start process again
+                        self.rotationSearchArray = {}
+                        self.hasRotationLockedOn=false
+                    else --keep on keeping on
+                        print('keep on keeping on')
+                    end
+                end
+
+
+            
+            elseif(self.hasRotationLockedOn == false and self.isWithinBoundary == false and #self.rotationSearchArray < self.dataCollectionThreshold) then -- if not locked on collect data on rotation
+                
+                Light:setColor(Light.Colors.VIOLET)
+                set_motor(100,0) -- start rotating
+                
+                ZeroCheck = true -- this bad boy is global be careful
+            elseif(#self.rotationSearchArray >= self.dataCollectionThreshold or self.isWithinBoundary == true  )then -- if you have collected enough data and are within boundary go
+               -- all data has been collected
+                self.dataCollectionThreshold = 100
+                set_motor(100,0) -- continue rotation 
+                
+                if(ZeroCheck)then  -- remove datapoints <0
+                    ZeroCheck = false
+                    for i =0,#self.rotationSearchArray do 
+                        if(self.rotationSearchArray[i]==0)then table.remove(self.rotationSearchArray,i) end 
+                    end
+                end
+
+                -- get min and max values from data array
+                local maxDistance = math.max(table.unpack(self.rotationSearchArray))
+                local minDistance = math.min(table.unpack(self.rotationSearchArray))
+                --
+
+                -- these values are fluff i have got from trial and error to stop at the right time
+                local errorMargin  = 0.005 
+                local tangentToMasterPoint =  minDistance + (maxDistance/7)
+                --
+
+                -- print('-------------for your debugging pleasure-------------------')
+                -- -- print('max distance = ' .. maxDistance)
+                -- print('min distance = ' .. minDistance)
+                -- -- print('median distance  = ' .. medianDistance)
+                -- print('targetDistance ' .. tangentToMasterPoint)
+                -- print('current distance = ' .. distance)
+                -- print('is kilobot traveling towards master = '.. tostring(self.isGoingTowards))
+                
+                if(#self.directionCheck == 20 and self.isGoingTowards )then -- if has established positive tragectory to target
+                    if( distance <= tangentToMasterPoint + errorMargin  and distance >= tangentToMasterPoint - errorMargin)then -- if within target angle
+                        -- Locked On
+                        if(  maxDistance ~= 0)then -- if there is not an array of zeros then go for target 
+                            --print('LOCKED ON setting path to straight line')
+                            self.directionCheck={}
+                            self.isSearchComplete=false
+                            self.rotationSearchArray = {}
+                            self.hasRotationLockedOn=true
+                        end
+                    end
+                end
+            end
+        end,
+}
+
