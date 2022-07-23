@@ -5,7 +5,7 @@
         
 -- Add your own program in function user_prgm() , after the comment "user program code goes below"
 
-    function sysCall_init() 
+function sysCall_init() 
         -- Check if we have a controller in the scene:
         i=0
         while true do
@@ -117,22 +117,51 @@ local dbug = {
             end
         end
         return str
-    end
+    end,
+    printRawMessage= function(self)
+        if(Com:isMessageInBuffer())then
+            print("message_rx 1 =  ".. message_rx[1])
+            print("message_rx 2 =  ".. message_rx[2])
+            print("message_rx 3 =  ".. message_rx[3])
+        end
+    end,
 
 }
 
 
-local arrayUtils = {
-
-   sum = function(array)
+local ArrayUtils = {
+    tablelength = function (T)
+        local count = 0
+        for _ in pairs(T) do count = count + 1 end
+        return count
+    end,
+    sum = function(self,array)
         local s = 0
-        for i=1,#array do
-            s=s+array[i]
+        for i=1, #array do
+                s = s + array[i]
         end
         return s
     end,
     average = function(self,array) 
         return self.sum(array)/#array
+    end,
+    averageBool =function(self,array)
+        local falses = 0
+        local trues = 0
+        print(#array)
+        for i=0,#array do
+            if(array[i]==1)then
+               falses= falses+ 1
+            else
+               trues = trues + 1
+            end
+        end
+        if(falses> trues)then
+            return false
+        else
+            return true
+        end
+        
     end,
 
     diff = function(array)
@@ -156,18 +185,36 @@ local arrayUtils = {
                 table.insert(r,i);
             end
         return r;
-    end
+    end,
+    addOnlyUniqueElementsToArray = function(self,element,array) 
+        array[element] = true
+        return array
+    end,
 
 }
 
-local utils = {
+local Utils = {
     restrictNumberLimits =function(self,intensity,limit)
-        if(intensity> limit)then intensity = limit end
-        if(intensity< -limit)then intensity = -limit end
+        if(intensity > limit)then intensity = limit end
+        if(intensity < -limit)then intensity = -limit end
         return intensity
-    end
+    end,
+    getKeyFromValue= function (t, val)
+        for k,v in pairs(t) do
+            if(v == val)then 
+            return k end
+        end
+    end,
+
+    getDidget = function (self,num, digit)
+       local s = string.sub(tostring(num), digit, digit)
+       return tonumber(s)
+    end,
+    getDigitRange =function (self,num,start,stop)
+       return string.sub(tostring(num), start, stop)
+    end,
 }
-              
+          
     local function setDelayStartAndDoFunction(func)
         delay_start = sim.getSimulationTime()
         func()
@@ -181,203 +228,1025 @@ local utils = {
     end
 
         
-        local Locomotion = {
-        motorMaxIntensity =255,
-        motorIntensity = 150,
-        motorRatio =0.5,
-
-        
-
+local Locomotion = {
+        --------------------------------SET MOTOR RATIO -------------------------------
         -- set motor ratio used for turning--0.5 is straight lower is left higher is right
-        setMotorRatio = function(self,ratio)
-            self.motorRatio = ratio
-            local leftMotorRatio = 1-self.motorRatio;
-            set_motor(150*leftMotorRatio,150*self.motorRatio)
-        end,
-        -- sets intensity of motor
-        setMotorIntensity =  function(self,intensity)
-            if(intensity> self.motorMaxIntensity) then intensity= self.motorMaxIntensity end
-            self.motorIntensity = intensty
-
-        end,
-        
-        stopMotor = function()set_motor(0,0)end,
-
-        zigZagMotorSubstrate = 0,
-        doNoisyZigZagWalk = function(self)
-            if(self.zigZagMotorSubstrate == 0 )then
-                self.zigZagMotorSubstrate=1,
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.5)end) --go forward reset clock
-            elseif (self.zigZagMotorSubstrate== 1) then
-                randomDelay =math.random(1000,10000)
-                self.zigZagMotorSubstrate=asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,2)
-            elseif (self.zigZagMotorSubstrate== 2) then
-                self.zigZagMotorSubstrate = 3;
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.9)end) -- go hard right restart clock
-            elseif (self.zigZagMotorSubstrate==3) then
-            randomDelay =math.random(1000,10000)
-                self.zigZagMotorSubstrate=    asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,4)
-            elseif (self.zigZagMotorSubstrate==4) then
-                self.zigZagMotorSubstrate= 5;
-                setDelayStartAndDoFunction(function()self:setMotorRatio(0.1)end) --go left restart clock
-            elseif(self.zigZagMotorSubstrate== 5)then
-            randomDelay =math.random(1000,10000)
-               self.zigZagMotorSubstrate= asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,0)
-            end
-        end,
-        
-        
-        --spriral search
-        spiralSubstrate = 0,
-        doSpiralSearch = function(self)
-            self.spiralSubstrate = self.spiralSubstrate + 1
-            local spiralExpansionCount = 7000
-            self:setMotorRatio(self.spiralSubstrate/spiralExpansionCount)
-            if(self.spiralSubstrate == spiralExpansionCount)then self.spiralSubstrate = 0 end
-        end,
-        
-        
-        ----------------
-        leftMotorIntensity = 60,
-        rightMotorIntensity = 60,
-        setDirection = function(self,direction, intensity)
-            local intensity = math.abs(intensity)
-            print(intensity)
-            if( direction) then
-                self.leftMotorIntensity = utils:restrictNumberLimits( intensity, 255)
-                self.rightMotorIntensity= utils:restrictNumberLimits( intensity/2, 255)
-            elseif (not direction) then
-                self.rightMotorIntensity= utils:restrictNumberLimits(  intensity* self.rightMotorIntensity,255)
-                self.leftMotorIntensity = utils:restrictNumberLimits( intensity/2,255)
-            end
-            set_motor(self.leftMotorIntensity,self.rightMotorIntensity)
-        end,
-        -------------------------------------------------
-        sampleLength = 200,
-        derHistory= {0,0,0,0},
-        distanceHistory={0,0,0,0},
-        sampleCount = 0,
-        currentTurningDirection = false,
-        
-        --------------------REDUCE DISTANCE BETWEEN SELF AND TARGET -------------------------
-        minDistance  = function (self,distance)
-                self.sampleCount = self.sampleCount +1
-                self.distanceHistory = arrayUtils.roll(self.distanceHistory,distance, self.sampleLength)
-                
-                --dbug:print_r(self.distanceHistory)
-                local derHistorySample = arrayUtils.diff(self.distanceHistory)
+        --variables------------------------------------------------------------------------
+            motorRatio =0.5,
+            normalMotorIntensity = 150,
+        -----------------------------------------------------------------------------------
+            setMotorRatio = function(self,ratio)
+               
+                print(ratio)
+                local leftMotorRatio = 1-ratio;
+                set_motor(self.normalMotorIntensity*leftMotorRatio,self.normalMotorIntensity*ratio)
+            end,
             
-                self.derHistory = arrayUtils.roll(self.derHistory, derHistorySample, self.sampleLength)
+        -----------------------------------------STOP MOTOR --------------------------------
+            stopMotor = function()set_motor(0,0)end,
+        
+        
+    
+        
+        --------------------------------DO RANDOM ZIGZAG WALK---------------------------------------------------
+        ---variables ---------------------------------------------------------------------------------------------------
+            zigZagMotorSubstrate = 0,
+        ---------------------------------------------------------------------------------------------------------------
+            doNoisyZigZagWalk = function(self)
+                if(self.zigZagMotorSubstrate == 0 )then
+                    self.zigZagMotorSubstrate=1,
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.5)end) --go forward reset clock
+                elseif (self.zigZagMotorSubstrate== 1) then
+                    randomDelay =math.random(5000,10000)
+                    self.zigZagMotorSubstrate=asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,2)
+                elseif (self.zigZagMotorSubstrate== 2) then
+                    self.zigZagMotorSubstrate = 3;
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.9)end) -- go hard right restart clock
+                elseif (self.zigZagMotorSubstrate==3) then
+                randomDelay =math.random(5000,10000)
+                    self.zigZagMotorSubstrate=    asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,4)
+                elseif (self.zigZagMotorSubstrate==4) then
+                    self.zigZagMotorSubstrate= 5;
+                    setDelayStartAndDoFunction(function()self:setMotorRatio(0.1)end) --go left restart clock
+                elseif(self.zigZagMotorSubstrate== 5)then
+                randomDelay =math.random(5000,10000)
+                   self.zigZagMotorSubstrate= asyncAwaitReturnSubstrate(self.zigZagMotorSubstrate,randomDelay,0)
+                end
+            end,
+            
+        
+        -----------------------SPIRAL SEARCHING-------------------------------------------------
+        ---variables --------------------------------------------------------------------------
+            spiralSubstrate = 0,
+        ---------------------------------------------------------------------------------------
+            doSpiralSearch = function(self)
                 
-                -- when a full sample is ganthered
-
-                if(self.sampleCount==self.sampleLength)then 
-                    self.sampleCount= 0
+                self.spiralSubstrate = self.spiralSubstrate + 1
+                local spiralExpansionCount = 3000
+                self:setMotorRatio(self.spiralSubstrate/spiralExpansionCount)
+                if(self.spiralSubstrate == spiralExpansionCount)then self.spiralSubstrate = 0 end
+            end,
+            
+            ---reset spiral
+            resetSpiral = function(self)self.spiralSubstrate = 0 end,
+       
+        --------------------REDUCE DISTANCE BETWEEN SELF AND TARGET ----------------------
+        ---variables--------------------------------------------------------------------------------- 
+            sampleLength            = 5,
+            derHistory              = {},
+            distanceHistory         = {},
+            sampleCount             = 0,
+            currentTurningDirection = false,
+        ---------------------------------------------------------------------------------------------
+        
+            minDistance  = function (self,distance)
+                self.sampleCount = self.sampleCount +1  -- count used for conditional logic and timing
+                -- creaters array  of length 30 that adds distance 
+              
+                table.insert(self.distanceHistory,distance)
+                if(#self.distanceHistory == 50)then
+                    local derHistorySample = ArrayUtils.diff(self.distanceHistory)
+                    -- add derivitive to derHistory a list of arrays    
+                    self.derHistory = ArrayUtils.roll(self.derHistory, derHistorySample, self.sampleLength)  -- 4
+                    self.distanceHistory = {}
+                end
+               
+                if(#self.derHistory==self.sampleLength)then   -- when a full sample is ganthered
                     
-                    --determine path
-                    local length = #self.derHistory
-                    local x = {}
-                    local y = arrayUtils.linSpace(length);
-
-                    for i = 1,length do
-                        local xi = arrayUtils.sum(self.derHistory[i])/length
+                    self.sampleCount= 0 -- reset count
+                    
+                    --determine path based on average of derivitives of der history
+                    local length = ArrayUtils.tablelength(self.derHistory)         -- length for readablity
+                    
+                    local x = {}                            -- empty array for average function
+                    local y = ArrayUtils.linSpace(length);  -- gradiated array count used as faux time steps
+                    
+                    -- loops over derivitive history and takes an average of each array in derHistory
+                    -- adds outcome to xi
+                    -- xi has list of either negative numbers or positive numbers of some magnitude 
+                    for i = 1,length do 
+                       
+                        local xi = ArrayUtils:sum(self.derHistory[i])/length -- 
                         table.insert(x,xi)
                     end
                     
-                    X = arrayUtils.sum(x)/#x
-                    Y = arrayUtils.sum(y)/#y
+                    X = ArrayUtils:sum(x)/#x -- sim of all xi
+                    Y = ArrayUtils:sum(y)/#y -- sum of all yi
                 
                     
+                    -- for readablity 
                     local top = {}
                     local bottom = {}
                     
+                    -- for loop that calculates denominator and numorator arrays
+                    -- used to calculate the slope of the derivitive arrays
                     for i =1,length do
                         table.insert( top, (x[i]-X) * (y[i]-Y ) )
                         table.insert( bottom, ((x[i]-X))^2)
                     end
-                    local topSum = arrayUtils.sum(top ) 
-                    local bottomSum=arrayUtils.sum(bottom)
-                    self.rateOfRelativePostionChange = topSum /(bottomSum*10000) --slope
-                    --print(self.rateOfRelativePostionChange)
-                    --print(self.rateOfRelativePositionChange)
-                    self.rateOfRelativePostionChange = utils:restrictNumberLimits(self.rateOfRelativePostionChange,500)
+                    -- sums top and bottom
+                    local topSum = ArrayUtils:sum(top ) 
+                    local bottomSum = ArrayUtils:sum(bottom)
+
+                    -- calculates slope of array IE the rate of relative position change
+                    -- if negative kilobot is moving away from at a rate = self.rateOfRelativePostionChange
+                    self.rateOfRelativePostionChange = topSum /(bottomSum*1000) --slope
                     
-                    if( self.rateOfRelativePostionChange < 0 ) then
-                        self:setDirection(  not self.currentTurningDirection,self.rateOfRelativePostionChange)
-                    else
-                        self:setDirection( self.currentTurningDirection,self.rateOfRelativePostionChange)
-                    end
+                    -- function that limits the magnitude of self.rateOfRelativePostionChange
+                    self.rateOfRelativePostionChange = Utils:restrictNumberLimits(self.rateOfRelativePostionChange,500)
+                   -- print('rate of relative position change ' .. self.rateOfRelativePostionChange)
+              
+                    local direction = self.rateOfRelativePostionChange/math.abs(self.rateOfRelativePostionChange)
+                    local intensity = math.abs(Utils:restrictNumberLimits( self.rateOfRelativePostionChange, self.motorMaxIntensity))
+                    local ratio = ((self.motorMaxIntensity-intensity)/self.motorMaxIntensity)
+
+                    -- print(intensity)
+                    -- if(direction < 0)then
+                    --     self.currentTurningDirection = not self.currentTurningDirection
+                    -- end
+                    
+                    -- if(self.currentTurningDirection) then
+                        
+                        self.leftMotorIntensity = Utils:restrictNumberLimits( intensity, self.motorMaxIntensity)
+                        self.rightMotorIntensity= Utils:restrictNumberLimits( intensity, 150)
+                    -- else 
+                    --     self.rightMotorIntensity= Utils:restrictNumberLimits(  intensity* self.rightMotorIntensity,self.motorMaxIntensity)
+                    --     self.leftMotorIntensity = Utils:restrictNumberLimits( intensity/2,150)
+                    -- end
+                    set_motor(self.leftMotorIntensity,self.rightMotorIntensity)
+                    self.derHistory={}
+                    -- set
+                    -- if( self.rateOfRelativePostionChange < 0 ) then -- if negative change position with intensity = self.rateOfRelativePostionChange
+                    --     print("changing direction")
+                    --     self:setDirection(  not self.currentTurningDirection,self.rateOfRelativePostionChange)
+                    -- else -- remain on course and adjust intensity = self.rateOfRelativePostionChange
+                    --     print('staying course')
+                    --     self:setDirection( self.currentTurningDirection,self.rateOfRelativePostionChange)
+                    -- end
                 end
+            end,
+        ------------------------------  SET DIRECTION ---------------------------
+        --variables ---------------------------------------------------------------
+        leftMotorIntensity = 60,
+        rightMotorIntensity = 60,
+        motorMaxIntensity =255,
+        ---------------------------------------------------------------------------
+        setDirection = function(self,direction, intensity)
+            local intensity = math.abs(intensity)
+            print(intensity)
+            if( direction) then
+                self.leftMotorIntensity = Utils:restrictNumberLimits( intensity, self.motorMaxIntensity)
+                self.rightMotorIntensity= Utils:restrictNumberLimits( intensity/2, 150)
+            elseif (not direction) then
+                self.rightMotorIntensity= Utils:restrictNumberLimits(  intensity* self.rightMotorIntensity,self.motorMaxIntensity)
+                self.leftMotorIntensity = Utils:restrictNumberLimits( intensity/2,150)
+            end
+            set_motor(self.leftMotorIntensity,self.rightMotorIntensity)
         end,
+        orbitSubstrate = 0, 
+        setOrbitSubstrate = function(self,substrate)
+             self.orbitSubstrate = substrate
+             return self.orbitSubstrate
+        end,
+        orbit = function (self,inputDistance,minDistance,maxDistance)
+            if (inputDistance ~= nil)  then 
+                inputDistance = inputDistance + half_diam
+               -- nameSuffix,kname=sim.getNameSuffix(sim.getObjectName(detectedObjectHandle))
+                -- if the obstacle is another robot, light up the robot    
+                if(inputDistance < minDistance) then                       --If distance is less than 4cm then
+                        set_color(3,0,0)                            --Turn LED Red
+                        set_motor(cw_in_straight,ccw_in_straight)   --Make the Kilobot move forwards
+                 
+                    elseif(inputDistance < maxDistance) then                   --If distance is between 4cm and 6cm then
+                      set_color(0,3,0)                              --turn RGB LED Green         
+                      set_motor(0,ccw_in_place)                     --Make the Kilobot turn left
+                    elseif(inputDistance < 0.1) then                  --If distance is  6cm then                
+                      set_color(0,0,3)                              --turn RGB LED Blue
+                      set_motor(cw_in_place,0)                      --Make the Kilobot turn right        
+                    else                   --If the Kilobot goes out of range then
+                        set_color(3,0,3)                            --turn the LED purple and move straight 
+                        set_motor(cw_in_straight,ccw_in_straight)
+                    end    
+            else
+                set_color(3,0,3)                                    --If no criteria is met turn the LED purple and move straight
+                set_motor(cw_in_straight,ccw_in_straight)
+            end
+        end,
+        ------------------------------------ROTATIONAL SEARCH --------------------------------------------------------------------------
+        rotationSearchArray ={0},
+        directionCheck = {},
+        isGoingTowards = false,
+        isAtBoundary = false,
+        hasRotationLockedOn=false,
+        isSearchComplete=false,
+        dataCollectionThreshold = 100,
+        rotationSearchRoll = {},
+        rotationSearchTickCount = 0,
+        rotationSearch = function(self,distance)
+            self.rotationSearchTickCount = self.rotationSearchTickCount+1
+            -- self.rotationSearhRoll = ArrayUtils.roll(self.rotationSearchRoll,distance,400)
+            -- print('rotation searchr roll ' .. ArrayUtils:sum(self.rotationSearhRoll))
+            -- if(ArrayUtils:sum(self.rotationSearhRoll)==0)then
+            --     self.rotationSearchTicks = 0
+            --     self:doSpiralSearch()
+            -- end
+
+
+            if( distance ~= 0 or nil )then -- creating a distance history array used to check if moving towards or away from master point
+                self.directionCheck = ArrayUtils.roll(self.directionCheck,distance,20)
+                self.isGoingTowards = ArrayUtils:sum(ArrayUtils.diff(self.directionCheck)) > 0
+            end
+
+            if( (distance == 0 or nil)) then -- flag if outside boundary
+                   -- print('no distance found')
+                    self.isAtBoundary = true
+                    self.dataCollectionThreshold = #self.rotationSearchArray
+                else -- collect data 
+                    --print('collecting data')
+                    self.isAtBoundary = false
+                    -- print('length of rotation search array = ' .. #self.rotationSearchArray )
+                    --  print('distance is = '..distance)
+                    table.insert(self.rotationSearchArray,distance)
+                end
         
-        --------------------ACT AS FOLLOWER -------------------------
-        actAsFollower = function(self,distance)
-            local isSearching = false
-            if (distance ~= nil)  then 
-                distance= distance + half_diam
-                    if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
-                        local initSubstrate =0
-                        if(initSubstrate == 0 )then
-                            initSubstrate = 1
-                            self:minDistance(distance)
-                        end
-                        
-                        if (distance< 0.035) then self.isSearching= false; set_motor(0,0);print('is stopping') end
-                        if (distance> 0.08) then self.isSearching= true end
-                        
-                        if(self.isSearching)then 
-                            self:minDistance(distance)
-                            set_color(0,5,0)
-                        else
-                            set_motor(0,0)
-                            set_color(0,0,5)
-                        end
-                    end
-                else
-                    self.spiralSubstrate=0
-                    set_motor(0,0)
-                    set_color(5,0,0)
-                    self:doSpiralSearch()
-                end
-        end,
-        actAsLeader= function(self,distance)
-            local isSearching = 0
-            if (distance ~= nil)  then 
-                distance= distance + half_diam
+            if(self.hasRotationLockedOn)then -- if locked on to maximum go straight
+                Light:setColor(Light.Colors.GREEN)
                 --print(distance)
-                if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
-                    isSearching =true
-                    if (distance> 0.08 ) then isSearching= false end
-                    if (distance< 0.01) then isSearching= true end
-                    if(isSearching)then
-                        self:doNoisyZigZagWalk() 
+                
+                set_motor(100,100) -- TODO: make this a zig zag forward
+                if(#self.rotationSearchArray > 20)then -- if distance is increasing search again after 200 data points
+                    print('greater than 20')
+                    if(self.isGoingTowards~=true)then
+                        print('switching to rotational search because current path has a positive gradient ie away from source')
+                        self.rotationSearchArray = {}
+                        self.hasRotationLockedOn=false
                     else
-                        set_motor(0,0)
-                        set_color(0,0,5)
+                        print('all good keep going')
                     end
-                    --if(distance > 0.09)then set_motor(0,0) end
-                    --if(distance< 0.025) then  end
+                end
+
+
+            
+            elseif(self.hasRotationLockedOn == false and self.isAtBoundary == false and #self.rotationSearchArray < self.dataCollectionThreshold) then -- if not locked on collect data on rotation
+                -- collecting data
+                Light:setColor(Light.Colors.VIOLET)
+                set_motor(100,0) -- start rotating
+               
+                -- print(#self.rotationSearchArray)
+                -- print(Kilobot.tickCount)
+
+                
+                
+                ZeroCheck = true
+                --print(#self.rotationSearchArray >= self.dataCollectionThreshold)
+            elseif(#self.rotationSearchArray >= self.dataCollectionThreshold or self.isAtBoundary == true  )then
+                --print('Data Has Been Collected ')
+                self.dataCollectionThreshold = 100
+                set_motor(100,0)
+                
+                if(ZeroCheck)then 
+                    ZeroCheck = false
+                    for i =0,#self.rotationSearchArray do 
+                        if(self.rotationSearchArray[i]==0)then table.remove(self.rotationSearchArray,i) end 
+                    end
+
+                end
+
+                local maxDistance = math.max(table.unpack(self.rotationSearchArray))
+
+                local minDistance = math.min(table.unpack(self.rotationSearchArray))
+            
+                local errorMargin  = 0.005
+                local tangentToMasterPoint =  minDistance + (maxDistance/7)
+
+                -- print('--------------------------------')
+                -- -- print('max distance = ' .. maxDistance)
+                -- print('min distance = ' .. minDistance)
+                -- -- print('median distance  = ' .. medianDistance)
+                -- print('targetDistance ' .. tangentToMasterPoint)
+                -- print('current distance = ' .. distance)
+                -- print('is kilobot traveling towards master = '.. tostring(self.isGoingTowards))
+                
+                if(#self.directionCheck == 20 and self.isGoingTowards )then
+                    if( distance <= tangentToMasterPoint + errorMargin  and distance >= tangentToMasterPoint - errorMargin)then
+                        --print('we are moving towards and taking aim')
+                        if(  maxDistance ~= 0)then
+                            --print('LOCKED ON setting path to straight line')
+                            self.directionCheck={}
+                            self.isSearchComplete=false
+                            self.rotationSearchArray = {}
+                            self.hasRotationLockedOn=true
+                        end
+                    end
                 end
             end
-        end
+        end,
     }
+    
+    Kilobot = { -- TAGKILOBOT
+            
+            tickCount = 0,
+            --Kilobot Personal Id
+            id = math.random(100,999), -- find bettwe way to generate unique id
+            --current first order roll
+            currentRoll     = 0, --tagcurrentroll
+            -- list of first order rolls 
+            Rolls= {
+                FOLLOWER    = 0,
+                LEADER      = 1,
+                BEACON      = 2,
+                FOODSOURCE  = 3,
+                UNRECRUTED  = 4,
+                SCOUT       = 5,
+                BROOD       = 6,
+                RECRUITED   = 7,
+                },
+            -- set the current user roll 
+            setCurrentRoll = function(self, roll) 
+                self.currentRoll = self.Rolls[roll]
+            end,
+            -- flag for has found food
+            hasFoundFood = false,
+            -- set flag for has found food
+            setHasFoundFood = function(self,isFood)
+                self.hasFoundFood = isFood
+            end,
+            isPlacedInHive = true,
+            setIsPlacedInHive  = function(self,isPlaced)
+                self.isPlacedInHive = isPlaced
+            end,
+        }
+        
+        Light = {
+
+            Colors = {
+                RED        = 0,
+                GREEN      = 1,
+                BLUE       = 2,
+                ORANGE     = 3,
+                PURPLE     = 4,
+                YELLOW     = 5,
+                WHITE      = 6,
+                VIOLET     = 7,
+                TURQUOISE  = 8,
+            },
+            
+            setColor = function(self,color)
+                if(color ==0)then
+                    set_color(3,0,0) -- RED
+                elseif(color== 1)then
+                    set_color(0,3,0) -- GREEN
+                elseif(color== 2)then
+                    set_color(0,0,3) -- BLUE
+                elseif(color== 3)then
+                    set_color(3,3,0) -- ORANGE
+                elseif(color== 4)then
+                    set_color(0,3,3) -- PURPLE
+                elseif(color== 5)then
+                    set_color(3,1,0) -- YELLOW
+                elseif(color== 6)then
+                    set_color(3,3,3) -- WHITE
+                elseif(color== 7)then
+                    set_color(3,0,3) -- VIOLET
+                elseif(color== 8)then
+                    set_color(0,3,1) -- TURQUOISE
+                end
+            end,
+            
+            gradientDistance = function(self,distance) 
+                if (distance ~= nil)  then 
+                    distance= distance + half_diam
+                    if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                        if(distance < 0.033) then
+                            self:setColor(self.Colors.WHITE) --turn RGB LED White
+                        elseif(distance < 0.040) then
+                            self:setColor(self.Colors.RED)
+                        elseif(distance < 0.050) then
+                            self:setColor(self.Colors.ORANGE)
+                        elseif(distance < 0.060) then
+                            self:setColor(self.Colors.GREEN)
+                        elseif(distance < 0.070) then            
+                            self:setColor(self.Colors.TURQUOISE)
+                        elseif(distance < 0.080) then
+                            self:setColor(self.Colors.BLUE)
+                        elseif(distance < 0.090) then
+                            self:setColor(self.Colors.VIOLET)                
+                        else
+                            set_color(0,0,0)     
+                        end     
+                    end
+                else
+                    set_color(0,0,0)
+                end
+            end
+        }
+        
+        Com = { -- messages are sent every duty cycle  --TAGCOM
+
+            searchId = 100,
+
+            functions = {
+                DISTANCE            = 0,
+                NEIGHBOURS          = 1,
+                MIN_NEIGHBOURS      = 2,
+                RECRUIT             = 3,
+                SEND_RECRUITABLE_ID = 4,
+            },
+
+            getMessage = function(self) 
+                get_message()
+            end,
+            setMessage = function(self,bit1,bit2,bit3) 
+                if(bit1==nil) then bit1 =0 end
+                if(bit2==nil) then bit2 =0 end
+                if(bit3==nil) then bit3 =0 end
+                message_out(bit1,bit2,bit3)
+            end,
+            messageDelayCount = 0,
+            setMessageWithDelay =  function(self,bit1,bit2,bit3,delay)
+                self.messageDelayCount = self.messageDelayCount + 1
+                if(self.messageDelayCount > delay)then self.messageDelaycount = 0 end -- reset if over mabye not needed 
+                if(self.messageDelayCount == delay)then
+                    message_out(bit1,bit2,bit3)
+                    self.messageDelayCount=0
+                end
+            end,
+            resetMessage =function(self)
+                message_rx[1] = 0
+                message_rx[2] = 0
+                message_rx[3] = 0
+            end,
+            isOfComType = function (self,comType)
+              if(comType == Utils:getDidget(message_rx[1],5) and comType ~= nil) then return true else return false end
+            end,
+            
+            -- this function will reset messages if buffer has been ampty of new messages after 100 ticks 
+            tickCount =0,
+            sanitizeBuffer = function(self)
+                if(self:isMessageInBuffer())then
+                    --print(message_rx[1])
+                    self.tickCount= 0
+                else
+                    self.tickCount =self.tickCount+1
+                    if(self.tickCount == 40) then 
+                        self.tickCount = 0
+                         message_rx[1] = 0
+                         message_rx[2] = 0
+                         message_rx[3] = 0
+                    end
+                    
+                end
+            end,
+           
+            isMessageInBuffer = function(self,action) 
+                self:getMessage()
+                if(message_rx[6]==1)then
+                    if(action~= nill) then action()end
+                    return true
+                else
+                    return false
+                end 
+            end,
+            hasMessage = function(self)
+                if(message_rx[6]==1)then return true else return false end
+            end,
+            hasMessageOfType = function(self,type)
+                if(self:hasMessage())then
+                    if(self:isOfComType(type))then
+                        return true
+                    else
+                        return false
+                    end
+                end
+            end,
+            messageIsFromRoll = function(self,roll)
+                if(Utils:getDidget(message_rx[1],1) == roll) then
+                    return true
+                else
+                    return false
+                end
+            end,
+            getMessageAsColor = function(self)
+               self:isMessageInBuffer(function()
+                print(Utils.getKeyFromValue(Light.Colors,message_rx[1]))
+               end )
+            end,
+            
+            
+            printRawMessage= function(self)
+                if(self:hasMessage())then
+                    print("message_rx 1 =  ".. message_rx[1])
+                    print("message_rx 2 =  ".. message_rx[2])
+                    print("message_rx 3 =  ".. message_rx[3])
+                end
+            end,
+            getMessageAsRoll = function(self)
+             self:isMessageInBuffer(function()
+                print(Utils.getKeyFromValue(Kilobot.Rolls,message_rx[1]))
+               end )
+            end,
+            
+            
+            falses =0,
+            trues = 0,
+            isTalkingToBeacon = function(self)
+                if(message_rx[6]==1)then
+                   if(message_rx[1]==Kilobot.Rolls.BEACON)then
+                        self.falses = self.falses +1
+                   else
+                        self.trues = self.trues +1
+                   end
+                   if(self.trues >self.falses)then return true else return false end
+                   if(self.trues> 50 or self.falses> 50) then self.trues=0;self.falses=0 end
+                end
+            end,
+
+            decodeUniqueId = function (self, encodedData) -- gets last unique Id From Recruits from first bit ignore first 
+                return tonumber(Utils:getDigitRange(encodedData,2,4))
+            end,
+            
+            decodeUserRoll = function (self,encodedData) 
+                return Utils:getDidget(encodedData,1)
+            end,
+
+            -- communications list refreshCount
+            refreshCount = 0,
+            -- list of ids in which current Kilobot is in communications with
+            inCommunicationIdsSet    = {},
+            currentMinNeighbours     = 99,
+            myNeighboursCounts       = 0,
+            messageSwitchSubstrate   = 0,
+            listOfEdgeIds            = {},
+            isRecruitable            = false,
+            refreshRate              = 200,
+
+            isOnEdgeOfHive = function(self)
+                self.refreshCount =self.refreshCount + 1
+
+                if(self.refreshCount < 100)then
+                    --MESSAGE SET
+                    self:setMessage(Kilobot.currentRoll .. Kilobot.id .. self.functions.MIN_NEIGHBOURS, self.currentMinNeighbours,0)
+                    if(self:isOfComType(self.functions.MIN_NEIGHBOURS))then
+                        if(message_rx[2] < self.currentMinNeighbours)then
+                            self.currentMinNeighbours = message_rx[2]
+                        elseif(self.myNeighboursCounts ~= 99 and self.myNeighboursCounts < self.currentMinNeighbours)then 
+                            self.currentMinNeighbours = self.myNeighboursCounts
+                        end
+                        
+                    end
+                --establish unique neighbours of self
+                elseif (self.refreshCount > 100 and self.refreshCount < 150) then
+                    if(self:hasMessage())then -- if message from recruit add id to list 
+                        if(self:messageIsFromRoll(Kilobot.Rolls.UNRECRUTED)) then
+                            self.inCommunicationIdsSet[self:decodeUniqueId(message_rx[1])] = true -- adds only unique
+                            if(self:isOfComType(self.functions.NEIGHBOURS))then
+                                if(self.inCommunicationIdsSet ~=nil) then -- tell how many NEIGHBOURS you have
+                                    self.myNeighboursCounts = ArrayUtils.tablelength(self.inCommunicationIdsSet)
+                                end
+                            end 
+                        end
+                    end
+                    --MESSAGE SET
+                    self:setMessage(Kilobot.Rolls.UNRECRUTED .. Kilobot.id .. self.functions.NEIGHBOURS, ArrayUtils.tablelength(self.inCommunicationIdsSet),0 )
+                        
+                     elseif( self.refreshCount == self.refreshRate )then
+                    print('---------------')
+                    print(Kilobot.id .. ' is in communication with ' ..  ArrayUtils.tablelength(self.inCommunicationIdsSet) .. ' kilobots')
+                    print('currentMinValue ' ..  self.currentMinNeighbours .. ' kilobots')
+                    self.listOfEdgeIds ={}
+                    self.currentMinNeighbours = 99
+                    self.refreshCount = 0
+                    self.inCommunicationIdsSet = {}
+                
+
+                if(self.currentMinNeighbours ==self.myNeighboursCounts) then
+                     self.isRecruitable = true
+                     return true
+                else
+                    self.isRecruitable =false
+                    return false
+                end
+                    end
+                -- THE GREAT REFRESH
+                
+           
+            end,
+
+            sendEdgeId = function(self,id)
+                --print(Kilobot.Rolls.BROOD .. Kilobot.id .. self.functions.SEND_RECRUITABLE_ID)
+                self.setMessage(Kilobot.Rolls.UNRECRUTED .. Kilobot.id .. self.functions.SEND_RECRUITABLE_ID,0,0)
+            end,
+            
+            sendRecruitmentMessage = function(self,recruitementInfo)
+                self:setMessage(Kilobot.Rolls.BROOD .. Kilobot.id .. self.functions.RECRUIT,0 )
+            end,
+        }
+    
+        
+        Behaviours = { --tagbehaviour
+            go = true,
+            leader= function(self,distance)
+               
+                if (distance ~= nil)  then
+                    -- print('LeaderDistance = ' .. distance) 
+                    --distance= distance + half_diam
+                    --if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                        if(distance > 0.07) then self.go = false end
+                        if(distance < 0.03) then self.go = true end
+                        if(self.go) then
+                           -- print('leading is doing search and distance = '..  distance)
+                            Locomotion:doNoisyZigZagWalk()
+                        else 
+                             -- print('leading is stopped = '..  distance)
+                            Locomotion:stopMotor()
+                        end 
+                    --end
+                end
+            end,
+            
+            scout = function(self)
+                Locomotion:doNoisyZigZagWalk()
+                Light:setColor(Light.Colors.RED)
+            end,
+            
+            follower = function(self,distance)
+                local isSearching = false
+                local initSubstrate = 0
+                --print(distance)
+                if (distance ~= nil)  then
+                    -- distance = distance + half_diam
+  --                      if sim.readCustomDataBlock(detectedObjectHandle,"kilobot")=="detectable" then
+                            --print('doing follow')
+                        if (distance < 0.03) then self.go = false end
+                        if ( distance > 0.06  ) then self.go = true end
+                        
+                        if(self.go )then 
+                            --print('Follower doing Rotation Search with distance = ' .. distance )
+                            --  print(distance)
+                            Locomotion:rotationSearch(distance)
+                            set_color(0,5,0)
+                        else
+                            Locomotion.rotationSearchArray ={0}
+                            Locomotion.directionCheck = {}
+                            Locomotion.isGoingTowards = false
+                            Locomotion.isAtBoundary = false
+                            Locomotion.hasRotationLockedOn=false
+                            Locomotion.isSearchComplete=false
+                            Locomotion.dataCollectionThreshold = 100
+                            Locomotion.rotationSearchRoll = {}
+                            Locomotion.rotationSearchTickCount = 0
+                            -- print('follower stoped with  distance = ' .. distance)
+                            Locomotion:stopMotor()
+                            set_color(0,0,5)
+                        --  end
+                    end
+                -- else
+                --     print('follower doing spiral')
+                --     Light.setColor(Light.Colors.RED)
+                --     Locomotion:stopMotor()
+                --     --Locomotion:resetSpiral()
+                --     Locomotion:doSpiralSearch()
+                end
+            end,
+            
+            foodSource= function()
+                --transmit distance two someone who finds a beacon
+                --byte 1 defines roll byte 2 defines distance 
+                local result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+                -- sending out distance ^6 to maintain fedelity. 
+                if(distance==nil) then distance =0 end 
+                Com:setMessage(2,distance*10^6,0)
+                --Com:printRawMessage()
+            end
+            
+        }
         
     
         -------------------------------------------------------------------------------------------------------------------------------------------
         -- Functions similar to C API
         -------------------------------------------------------------------------------------------------------------------------------------------    
-        
+        --MAINLOOP-----------------------------------------------------------------------------------------------------------------------------------------
         function user_prgm()
-        
-            if (message_rx[6]==1) then
-                -- process your message
-            end
-    
-            -- get distance to nearest obsctacle
-            result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+            Com:sanitizeBuffer()
+            local result,distance,detectedPoint,detectedObjectHandle,detectedSurfaceNormalVector=sim.checkProximitySensor(sensorHandle,obstacles)
+            
+            if(Kilobot.currentRoll == Kilobot.Rolls.FOLLOWER)then -- TAGFOLLOWER
 
-            Locomotion:actAsLeader(distance)
-        
+                -- minimize distance between follower and leader, 
+                -- if distance is above X
+                    -- start minimizing
+                -- if distance is below Y
+                    -- stop and wait for distance x again. 
+                
+                -- if message_rx 2 =  'found food source'
+                    -- start widest orbit of leader
+                -- if find foodsource
+                    -- set currentRoll to recruited with given params
+
+                --Com:printRawMessage()
+                Behaviours:follower(distance)
+                -- if(message_rx[1]==Kilobot.Rolls.LEADER)then
+                --     Behaviours:follower(message_rx[2]/10^6)       
+                -- end
+                -- if(distance == nil) then distance = 0 end
+                -- Com:setMessage(Kilobot.currentRoll,distance*10^6,0)
+                
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.LEADER) then --TAGLEADER
+                
+                --print(distance)
+                
+                Behaviours:leader(distance)
+                
+           
+                
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.BEACON) then --TAGBEACON
+                -- Do beacon behaviour
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.FOODSOURCE)  then --FOODTAG
+                -- Do food source behaviour
+                    -- default transmit message of I AM FOOD
+                    -- and distance is reduced to threshold transfer data to finder 
+                    -- if found 
+                        -- set flag as found food source 
+                    -- if set to found 
+                        --transmit data to finder 
+                            -- amount of food left
+                            -- amount of food given
+                            -- food quality 
+                            -- etc
+                    Behaviours:foodSource()
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.UNRECRUTED )  then --TAGUNRECRUITED
+                
+                --Locomotion:orbit(distance,0.03,0.05)
+                --print()
+                
+
+                
+                if(Com:isOnEdgeOfHive()) then
+                        Light:setColor(Light.Colors.GREEN)
+                        --print('green')
+                        if (Com.refreshCount > 150 and Com.refreshCount < Com.refreshRate) then
+                            print('bot id = ' .. Kilobot.id ..' has Edge Position')
+                            Com:setMessage(Kilobot.currentRoll ..Kilobot.id .. Com.functions.SEND_RECRUITABLE_ID, Kilobot.id,0)
+                            
+                        end
+                else
+                        --print('yellow')
+                        Light:setColor(Light.Colors.YELLOW)
+                         if (Com.refreshCount > 150 and Com.refreshCount < Com.refreshRate) then
+                            print('--------------------- its on ==============')
+                            if(Com.hasMessage())then
+                            --print('yellow message')
+                            -- Com:printRawMessage()
+                            -- print('yellow message printed')
+                            if(Utils:getDidget(message_rx[1],5)==Com.functions.SEND_RECRUITABLE_ID)then
+                                -- print('has correct message')
+                                print('bot id = ' .. message_rx[2] .. ' has Edge Position detected from non edge')
+                                --self.listOfEdgeIds[self:decodeUniqueId(message_rx[1])]=true
+                                -- self:sendEdgeId(self:decodeUniqueId(message_rx[1]))
+                                -- print(self:decodeUniqueId(message_rx[1]))
+                                -- print(self.listOfEdgeIds)
+                               Com:setMessage(Kilobot.currentRoll .. message_rx[2] .. Com.functions.SEND_RECRUITABLE_ID, message_rx[2],0)
+                                --self:printRawMessage() 
+                            end
+                        end
+                        end
+                end
+                -- if (Com.refreshCount > 150 and Com.refreshCount < Com.refreshRate) then
+                --     if(Com.isRecruitable==true) then -- random value for each kilobot to 
+                --             print('bot id = ' .. Kilobot.id ..' has Edge Position')
+                --             Com:setMessage(Kilobot.currentRoll ..Kilobot.id .. Com.functions.SEND_RECRUITABLE_ID, Kilobot.id,0)
+                --             --self.isRecruitable = true
+                --     elseif(Com.isRecruitable == false)then --listen for message and transmit
+                --         if(Com.hasMessage())then
+                --             print('yellow message')
+                --             Com:printRawMessage()
+                --             print('yellow message printed')
+                --             if(Utils:getDidget(message_rx[1],5)==Com.functions.SEND_RECRUITABLE_ID)then
+                --                 print('has correct message')
+                --                 print('bot id = ' .. message_rx[2] .. ' has Edge Position detected from non edge')
+                --                 --self.listOfEdgeIds[self:decodeUniqueId(message_rx[1])]=true
+                --                 -- self:sendEdgeId(self:decodeUniqueId(message_rx[1]))
+                --                 -- print(self:decodeUniqueId(message_rx[1]))
+                --                 -- print(self.listOfEdgeIds)
+                --                Com:setMessage(Kilobot.currentRoll .. message_rx[2] .. Com.functions.SEND_RECRUITABLE_ID, message_rx[2],0)
+                --                 --self:printRawMessage() 
+                --             end
+                --         end
+                --     end
+                -- end
+                -- print(tx0 .. ' ' ..tx1..' ' ..tx2)
+
+
+                -- if(Com.refreshCount < 45)then
+                --     -- print('-------')
+                --     -- print('sending min')
+                --     -- Com:printRawMessage()
+                    
+                --     Com:setMessage(Kilobot.currentRoll .. Kilobot.id .. Com.functions.MIN_NEIGHBOURS, Com.currentMinNeighbours,0)
+                --     if(Com:isOfComType(Com.functions.MIN_NEIGHBOURS))then
+                --         -- print(message_rx[2])
+                --         -- print(Com.currentMinNeighbours)
+                --         if(message_rx[2] < Com.currentMinNeighbours)then
+                --             Com.currentMinNeighbours = message_rx[2]
+
+                --             --print('min neighbours message' ..Com.currentMinNeighbours)
+                --         elseif(Com.myNeighboursCounts ~= 99 and Com.myNeighboursCounts < Com.currentMinNeighbours)then 
+                --             Com.currentMinNeighbours = Com.myNeighboursCounts
+                --             --print('min neighbours message' .. Com.currentMinNeighbours)
+                --         end
+                --     end
+                -- elseif (Com.refreshCount > 45 and Com.refreshCount < 100) then
+
+                --     -- print('-------')
+                --     -- print('sending normal')
+                --     -- Com:printRawMessage()
+
+                --     if(Com:hasMessage())then -- if message from recruit add id to list 
+                --         -- print('sentry in commuication with roll = '.. Utils:getDidget(message_rx[1],1))
+                --         if(Com:messageIsFromRoll(Kilobot.Rolls.UNRECRUTED)) then
+                --         --print('is recruited merssage ')
+                --             --print('sentry is in communication with unrecruited with unique = ' .. Com:decodeUniqueId(message_rx[1]))
+                --             Com.inCommunicationIdsSet[Com:decodeUniqueId(message_rx[1])] = true -- adds only unique
+                --             if(Com:isOfComType(Com.functions.NEIGHBOURS))then
+                --                 -- print('got message')
+                --                 if(Com.inCommunicationIdsSet ~=nil) then -- tell how many NEIGHBOURS you have
+                --                     Com.myNeighboursCounts= ArrayUtils.tablelength(Com.inCommunicationIdsSet)
+                --                     --if(Com.currentMinNeighbours == 99) then Com.currentMinNeighbours = Com.myNeighboursCounts end
+                --                 end
+                --             end 
+                --         end
+                --     end
+                --     Com:setMessage(Kilobot.Rolls.UNRECRUTED .. Kilobot.id .. Com.functions.NEIGHBOURS, ArrayUtils.tablelength(Com.inCommunicationIdsSet),0 )
+                -- end
+               
+                -- --Com:printRawMessage()
+
+                
+                -- Com.refreshCount =Com.refreshCount +1
+                -- if( Com.refreshCount == 100 )then
+                    
+                --     print('---------------')
+                --     print(Kilobot.id .. ' is in communication with ' ..  ArrayUtils.tablelength(Com.inCommunicationIdsSet) .. ' kilobots')
+                --     print('currentMinValue ' ..  Com.currentMinNeighbours .. ' kilobots')
+                --     Com.currentMinNeighbours = 99
+                --     Com.refreshCount = 0
+                --     Com.inCommunicationIdsSet = {}
+                -- end
+                -- if has distance but no com rotational search if has com orbit com with distance untill encoutering correct id then stop 
+                -- if(distance==nil)then distance= 0 end
+                -- if(distance > 0.06)then Locomotion.orbitSubstrate = 0 end
+                
+                -- Locomotion.orbitSubstrate = asyncAwaitReturnSubstrate(Locomotion.orbitSubstrate,20000,1)
+
+                -- if(Locomotion.orbitSubstrate == 0)then
+                --     Light:setColor(Light.Colors.PURPLE)
+                --     print('in Orbit')
+                --     Locomotion:orbit(distance,0.06,0.07)
+                -- elseif(Locomotion.orbitSubstrate==1)then
+                --    --print('inSpiralSearch')
+                --     if(Kilobot.isPlacedInHive) then
+                --         print('I AM IN PLACE id = ' .. Kilobot.id)
+                --         Locomotion:stopMotor()
+                --         if(Com:hasMessageOfType(Com.functions.NEIGHBOURS))then -- TODO: this should be communicated less often
+                --             --update search ids
+                --             Com.searchId = Utils.getDidget(message_rx[2],1)
+                --             Com:setMessageWithDelay(Kilobot.currentRoll .. Kilobot.id ..  Kilobot.functions.NEIGHBOURS,100)
+                --         end
+                --     else -- if in communication with hive ie NEIGHBOURS
+                --             -- if transmitted Id is same as neighbours stop
+                --             -- esle min distance then Orbit
+
+                --         if(Com:hasMessageOfType(Com.functions.DISTANCE))then
+                --             if(Com:decodeUniqueId(message_rx[1]) == 100) then -- incommunication with seed
+                --                      -- local distance = message_rx[2]/10^6
+                --                      print('spiral 1')
+                --                      print(distance > 0.050)
+                --                      print(distance)
+                        
+                --                     Locomotion:rotationSearch(distance)
+                --                      --print(distance > 0.6)
+                --                     if( distance < .02 )then
+                --                         -- Locomotion.orbitSubstrate
+                --                         Kilobot:setIsPlacedInHive(true)
+                --                     elseif(distance > 0.05)then
+                --                         Locomotion:stopMotor()
+                --                         print('setting orbit substrate')
+                --                         Locomotion:setOrbitSubstrate(0)
+                --                     end
+                --             else
+                --                 if(Utils:getDidget(message_rx[2],1)==Com.searchId)then
+                --                     print('spiralcom')
+                --                     local distance = Utils:getDigitRange(message_rx[2]/10^6,2,7)
+                --                     Locomotion:rotationSearch(distance)
+                --                 end
+                --             end
+                --         else
+                --             Locomotion:rotationSearch(distance)
+                --         end
+                --     end
+                -- end     -- if(Com:hasMessage())then
+                --     -- print('unrecruited has Message = ' .. message_rx[1])
+                --     if(Com:decodeUserRoll()==Kilobot.Rolls.BROOD) then 
+                --         --set coordinate from sentry based on message_rx[2]
+                --         print('number of close ids =' .. message_rx[2])
+                --     end
+                --     if(Com:decodeUserRoll()==Kilobot.Rolls.UNRECRUTED)then 
+                --         if(message_rx[2]== coordinateFromSentry - 1)then
+                --              Locomotion.stopMotor()
+                --         else
+                --             if(distance < 0.4) then
+                --                 Locomotion:orbit(distance,0.4)
+                --             else
+                --                 Locomotion:minDistance(distance)
+                --             end
+                --         end
+                --     end
+                -- end
+
+                -- cluster around sentry establish distance hierarche
+                    --settle when all are in correct place
+                    --wait for instruction
+                    
+                    --if instruction to recruit
+                        -- establish route ID,
+                        -- establish personal ID,
+                        --setCurrentRollToRecruited
+
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.RECRUITED )  then --TAGRECRECRUITED
+                -- follow beacon 
+                -- if interacting with food source
+                    -- change light to green
+                    -- gather foodsource data
+                -- if interacting with correct sentry
+                    -- change light to off
+                    -- transfer data to sentry
+                -- continue
+                
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.SCOUT )  then --TAGSCOUT
+            -- Do food source behaviour
+            -- random walk search unless near beacon if near beacon follow beacon
+             if(message_rx[1]==Kilobot.Rolls.FOODSOURCE)then
+                -- found FOODSOURCE
+                Behaviours:follower(message_rx[2]/(10^6))
+                --if distance is of threshold 
+                    --set currentRoll To Recruit
+            else
+                Behaviours:scout()
+            end
+
+            elseif (Kilobot.currentRoll == Kilobot.Rolls.BROOD) then --TAGBROOD
+
+                Com.refreshCount=Com.refreshCount+1
+                if(Com.refreshCount > 150 and Com.refreshCount<Com.refreshRate)then
+                    if(Com:hasMessage())then
+                        print(message_rx[1])
+                        Com:printRawMessage()
+                        -- print('------------')
+                        -- print('has Message from ' .. Utils:getDidget(message_rx[1],5) )
+                            if(Utils:getDidget(message_rx[1],5) ==Com.functions.SEND_RECRUITABLE_ID)then
+                                print('has correct message')
+                                Com:printRawMessage()
+                                Com.listOfEdgeIds[Com:decodeUniqueId(message_rx[1])]=true
+                                Com:sendEdgeId(Com:decodeUniqueId(message_rx[1]))
+                                print(Com.listOfEdgeIds)
+                            end
+                    end
+                else
+                    Com.listOfEdgeIds={}
+                    Com.refreshCount=0
+                end
+            
+            -- get list of edge ids in a group
+                
+
+
+            --     Light:setColor(Light.Colors.BLUE)
+            --     -- do sentry behaviour
+            --     -- constantly transmit number of neighbours 
+            --         -- this will be echoed through out the hive,
+            --             -- will be used to give stopDistance
+            --     Com.refreshCount = Com.refreshCount + 1
+            --     Com:setMessage( Kilobot.Rolls.BROOD .. Kilobot.id  .. Com.functions.DISTANCE, distance * 10^6, 0) -- set message comminicating (ROLL,number of unrecruited, 0)
+            --     if(Com:hasMessage())then -- if has message
+            --         -- print('sentry in commuication with roll = '.. Utils:getDidget(message_rx[1],1))
+            --         if(Utils:getDidget(message_rx[1],1) == Kilobot.Rolls.UNRECRUTED) then
+            --             --print('sentry is in communication with unrecruited with unique =' .. Com:decodeUniqueId(message_rx[1])
+            --             Com.inCommunicationIdsSet[Com:decodeUniqueId(message_rx[1])] = true -- adds only unique
+            --             if(Com.inCommunicationIdsSet ~=nil)then
+            --                Com:setMessage(Kilobot.Rolls.BROOD .. Kilobot.id .. Com.functions.NEIGHBOURS, #Com.inCommunicationIdsSet )
+            --             end
+            --         end
+            --     end
+
+            --     if( Com.refreshCount == 100 )then
+            --         Com.refreshCount = 0
+            --         Com.inCommunicationIdsSet = {}
+            --     end
+            end
         end
         
         -------------------------------------------------------------------------------------------------------------------------------------------
@@ -729,5 +1598,6 @@ function sysCall_actuation()
     
     end
     
-    
+
 end 
+ 
