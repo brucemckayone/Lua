@@ -97,6 +97,8 @@ local Communication = {
 
     --sending data 
     irstart = sim.getSimulationTime(),
+
+    
     sendData = function (self) -- send data from ir every 0.2s, at a max distance of 7cm
         local newir=sim.getSimulationTime()
         if ((self.enable_tx==1) and (newir-self.irstart>0.2)) then
@@ -104,6 +106,7 @@ local Communication = {
             self.irstart=newir
         end
     end,
+
 
     -- get message
     getMessage = function (self)
@@ -124,7 +127,7 @@ local Communication = {
             self.message_rx[6]=0 -- no message receveid
         end
     end,
-
+    
     -- message sending
     tx0=0,
     tx1=0,
